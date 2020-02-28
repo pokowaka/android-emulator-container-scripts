@@ -7,11 +7,13 @@
     "@material-ui/icons": "^4.9.1",
     "@material-ui/lab": "^4.0.0-alpha.56",
     "@material-ui/styles": "^4.10.0",
+    "@react-firebase/auth": "^0.2.10",
     "android-emulator-webrtc": "^1.0.0",
     "axios": "^0.19.2",
+    "firebase": "^7.19.0",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
-    "react-scripts": "^3.4.1"
+    "react-scripts": "^3.4.3"
   },
   "scripts": {
     "start": "react-scripts start",
