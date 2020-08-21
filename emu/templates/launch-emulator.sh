@@ -110,7 +110,7 @@ install_adb_keys() {
     echo "-----END PRIVATE KEY-----" >>/root/.android/adbkey
   else
     echo "emulator: No adb key provided, creating internal one, you might not be able connect from adb."
-    run adb keygen /root/.android/adbkey
+    run /android/sdk/platform-tools/adb keygen /root/.android/adbkey
   fi
   run chmod 600 /root/.android/adbkey
 }
@@ -135,10 +135,25 @@ install_console_tokens() {
   fi
 }
 
-install_grpc_certs() {
-    # Copy certs if they exists and are not empty.
-    [ -s "/run/secrets/grpc_cer" ] && cp /run/secrets/grpc_cer /root/.android/emulator-grpc.cer
-    [ -s "/run/secrets/grpc_key" ] && cp /run/secrets/grpc_key /root/.android/emulator-grpc.key
+setup_grpc_certs() {
+  if [ -s "/run/secrets/grpc_cer" ]; then
+    # -grpc-tls-cer <pem>   File with the public X509 certificate used to enable gRPC TLS.
+    GRPC_PARAMS="${GRPC_PARAMS} -grpc-tls-cer /run/secrets/grpc_cer"
+  fi
+
+  if [ -s "/run/secrets/grpc_key" ]; then
+    # -grpc-tls-key <pem>  File with the private key used to enable gRPC TLS.
+    GRPC_PARAMS="${GRPC_PARAMS} -grpc-tls-key /run/secrets/grpc_key"
+  fi
+
+  if [ -s "/run/secrets/chain_pem" ]; then
+    # -grpc-tls-ca <pem>   File with the Certificate Authorities used to validate client certificates.
+    GRPC_PARAMS="${GRPC_PARAMS} -grpc-tls-ca /run/secrets/chain_pem"
+  fi
+
+  if [ ! -z "${GRPC_PARAMS}" ]; then
+    echo "emulator: With grpc tls config $GRPC_PARAMS"
+  fi
 }
 
 clean_up() {
@@ -179,7 +194,7 @@ log_version_info
 clean_up
 install_console_tokens
 install_adb_keys
-install_grpc_certs
+setup_grpc_certs
 setup_pulse_audio
 forward_loggers
 
@@ -212,6 +227,10 @@ fi
 
 if [ ! -z "${TURN}" ]; then
   var_append LAUNCH_CMD -turncfg \'${TURN}\'
+fi
+
+if [ ! -z "${GRPC_PARAMS}" ]; then
+  var_append LAUNCH_CMD $GRPC_PARAMS
 fi
 
 # Add qemu specific parameters
