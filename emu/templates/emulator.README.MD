@@ -38,10 +38,10 @@ The following environment variables are accepted by the emulator:
 The following ports are available:
 
  - 5554: The emulator [console](https://developer.android.com/studio/run/emulator-console) port.
- - 5555: The [Android Debug Bridge (adb)](https://developer.android.com/studio/command-line/adb) port
- - 8554: The gRPC port. This can be used by android studio and javascript endpoints.
+ - 5555: The [Android Debug Bridge (adb)](https://developer.android.com/studio/command-line/adb) port.
+ - 8554: The gRPC service port, which hosts the `android.emulation.control.v2.Rtc` WebRTC signaling and media streaming service directly.
 
-An example invocation making the console, adb and the gRPC endpoint available:
+An example invocation making the console, ADB, and gRPC/WebRTC endpoint available:
 ```sh
 docker run -e "TOKEN=$(cat ~/.emulator_console_auth_token)" -e "ADBKEY=$(cat ~/.android/adbkey)" -e "EMULATOR_PARAMS=${PARAMS}" --device /dev/kvm --publish 8554:8554/tcp --publish 5554:5554/tcp --publish 5555:5555/tcp ${CONTAINER_ID}
 ```

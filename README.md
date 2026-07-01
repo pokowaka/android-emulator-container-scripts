@@ -1,71 +1,71 @@
 # Android Emulator Container Scripts
 
 This is a set of minimal scripts to run the emulator in a container for various
-systems such as Docker, for external consumption. Requires Python 3.10 or
-newer.
+systems such as Docker, for external consumption. Requires Python 3.10 or newer.
 
-\*Note that this is still an experimental feature and we recommend installing
-this tool in a [python virtual environment](https://docs.python.org/3/tutorial/venv.html).
-Please file issues if you notice that anything is not working as expected.
+> [!NOTE] This is still an experimental feature and we recommend installing this
+> tool in a
+> [Python virtual environment](https://docs.python.org/3/tutorial/venv.html).
+> Please file issues if you notice that anything is not working as expected.
 
-# Requirements
+---
 
-These demos are intended to be run on a linux OS. Your system must meet the
+## Requirements
+
+These demos are intended to be run on a Linux OS. Your system must meet the
 following requirements:
 
-- A Python interpreter must be installed (python3 with python3-venv to create virtual environments) 
-- ADB must be available on the path. ADB comes as part of th Android SDK.
-  Note that installing the command line tools is sufficient.
-- [Docker](https://docs.docker.com/v17.12/install/) must be installed. Make
-  sure you can run it as [non-root
-  user](https://docs.docker.com/install/linux/linux-postinstall/)
-- [Docker Compose](https://docs.docker.com/compose/install/) must be installed
-  — either the v2 `docker compose` plugin (preferred) or the legacy
-  `docker-compose` v1 command works.
-- KVM must be available. You can get access to KVM by running on "bare metal",
-  or on a (virtual) machine that provides nested virtualization. If you are planning to run
-  this in the cloud (gce/azure/aws/etc..) you first must make sure you have
-  access to KVM. Details on how to get access to KVM on the various cloud
-  providers can be found here:
+- **Python 3.10+**: Python interpreter with `python3-venv` to create virtual
+  environments.
+- **Android ADB**: ADB must be available on your `PATH` (included with Android
+  SDK Platform-Tools or Command-line tools).
+- **[Docker Engine](https://docs.docker.com/engine/install/)**: Docker must be
+  installed and configured to run as a
+  [non-root user](https://docs.docker.com/engine/install/linux-postinstall/).
+- **[Docker Compose](https://docs.docker.com/compose/install/)**: Either the
+  modern `docker compose` CLI plugin (v2) or legacy `docker-compose` (v1).
+- **KVM (Kernel-based Virtual Machine)**: KVM must be enabled on your host. You
+  can access KVM on bare-metal Linux or inside cloud Virtual Machines with
+  nested virtualization enabled:
+  - **AWS**: Use
+    [EC2 Bare Metal instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html#bare-metal-instances)
+    or instance types supporting KVM.
+  - **Azure**: Choose a
+    [VM size supporting nested virtualization](https://learn.microsoft.com/en-us/azure/virtual-machines/sizes)
+    (e.g., Dv3, Ev3 series).
+  - **Google Cloud (GCE)**: Enable
+    [nested virtualization](https://cloud.google.com/compute/docs/instances/nested-virtualization/overview)
+    on Compute Engine VMs.
 
-  - AWS provides [bare
-    metal](https://aws.amazon.com/about-aws/whats-new/2019/02/introducing-five-new-amazon-ec2-bare-metal-instances/)
-    instances that provide access to KVM.
-  - Azure: pick a [VM size that supports nested virtualization](https://learn.microsoft.com/en-us/azure/virtual-machines/acu)
-    (the `acu` table flags supported families). KVM is then available inside the VM.
-  - GCE: Follow these
-    [instructions](https://cloud.google.com/compute/docs/instances/enable-nested-virtualization-vm-instances)
-    to enable nested virtualization.
+> [!WARNING] You will experience reduced performance when using nested
+> virtualization. Container images have been tested under Debian and Ubuntu.
+> Docker Desktop on macOS and Windows is not supported for KVM acceleration.
 
-Keep in mind that you will see reduced performance if you are making use of
-nested virtualization. The containers have been tested under Debian and Ubuntu.
+---
 
-_NOTE: The images will not run in docker on mac or windows_
+## Quick Start with Hosted Containers
 
-# Quick start with hosted containers.
+We host a set of pre-built container images in a public Google Artifact
+Registry. See [REGISTRY.MD](REGISTRY.MD) for full details.
 
-We now host a set of containers in a public repository. You can find details about the containers
-[here](REGISTRY.MD). You can now run these containers without building them. For example:
+You can launch a hosted container immediately without building from source:
 
 ```sh
 docker run \
   -e ADBKEY="$(cat ~/.android/adbkey)" \
   --device /dev/kvm \
   --publish 8554:8554/tcp \
-  --publish 5555:5555/tcp  \
+  --publish 5555:5555/tcp \
   us-docker.pkg.dev/android-emulator-268719/images/30-google-x64:30.1.2
 ```
 
-This will pull down the container if it is not locally available and launch it. You can see that is
-starting:
-
-After this you can connect to the device by configuring adb:
+Connect ADB to the container once started:
 
 ```sh
-  adb connect localhost:5555
+adb connect localhost:5555
 ```
 
-The device should now show up after a while as:
+Verify connection:
 
 ```sh
 $ adb devices
@@ -74,386 +74,231 @@ List of devices attached
 localhost:5555 device
 ```
 
-If you wish to use this in a script you could do the following:
+In automated scripts:
 
 ```sh
 docker run -d \
   -e ADBKEY="$(cat ~/.android/adbkey)" \
   --device /dev/kvm \
   --publish 8554:8554/tcp \
-  --publish 5555:5555/tcp  \
+  --publish 5555:5555/tcp \
   us-docker.pkg.dev/android-emulator-268719/images/30-google-x64:30.1.2
-  adb connect localhost:5555
-  adb wait-for-device
 
-  # The device is now booting, or close to be booted
-
+adb connect localhost:5555
+adb wait-for-device
+# The device is now booted or booting
 ```
 
-A more detailed script can be found in [run-in-script-example.sh](./run-in-script-example.sh).
+See [run-in-script-example.sh](./run-in-script-example.sh) for a comprehensive
+example.
 
-# Install in a virtual environment
+---
 
-You can install the python package as follows:
+## Installation & CLI Usage
 
-    source ./configure.sh
+Install the `emu-docker` CLI in a virtual environment:
 
-This will activate a virtual environment and make the executable `emu-docker`
-available. You can get detailed information about the usage by launching it as
-follows:
+```sh
+source ./configure.sh
+```
 
-    emu-docker -h
+This activates the virtual environment and installs `emu-docker`. View CLI
+options:
 
-You will have to accept the license agreements before you can create docker containers.
+```sh
+emu-docker -h
+```
 
-## Quick start, interactively creating and running a docker image
+### Interactive Container Creation
 
-You can interactively select which version of android and emulator you wish to
-use by running:
+Interactively select Android system images and emulator versions:
 
-    emu-docker interactive --start
+```sh
+emu-docker interactive --start
+```
 
-You will be asked to select a system image and an emulator version, after which
-a docker file will be created. The system image and emulator will be downloaded
-to the current directory if needed. The script will provide you with a command
-to see the logs as well as the command to stop the container.
+This prompts for system image & emulator choices, downloads required artifacts,
+generates Dockerfiles, and launches the container.
 
-If the local adb server detected the started container automatically,
-you have nothing to do to query it through adb. If that's not the case,
-you can now connect to the running device using adb:
+Connect via ADB:
 
-    adb connect localhost:5555
+```sh
+adb connect localhost:5555
+adb devices
+```
 
-To check if adb has seen the container, you can use the:
+### Obtaining System Image & Emulator URLs
 
-    adb devices
+List published Android SDK system images and emulator releases:
 
-command and check if a device is detected.
-
-Do not forget to stop the docker container once you are done!
-
-Read the [section](#Make-the-emulator-accessible-on-the-web) on making the
-emulator available on the web to run the emulator using webrtc
-
-## Obtaining URLs for emulator/system image zip files
-
-Issuing:
-
-    emu-docker list
-
-will query the currently published Android SDK and output URLs for the zip files
-of:
-
-- Available and currently Docker-compatible system images
-- Currently published and advertised emulator binaries
-
-For each system image, the codename letter, sort tag, ABI, API level (with a
-trailing `ps16k` for 16 KB-page variants), and URL are displayed. For each
-emulator, the update channel (stable, dev, ...), version, host os, and URL
-are displayed.
+```sh
+emu-docker list
+```
 
 Example output:
 
-    SYSIMG R google_apis x86_64 30 https://dl.google.com/android/repository/sys-img/google_apis/x86_64-30_r16.zip
-    SYSIMG S google_apis x86_64 31 https://dl.google.com/android/repository/sys-img/google_apis/x86_64-31_r14.zip
-    SYSIMG T google_apis_playstore x86_64 33 https://dl.google.com/android/repository/sys-img/google_apis_playstore/x86_64-33_r09.zip
-    SYSIMG U google_apis x86_64 34 https://dl.google.com/android/repository/sys-img/google_apis/x86_64-34_r14.zip
-    SYSIMG V google_apis x86_64 35 https://dl.google.com/android/repository/sys-img/google_apis/x86_64-35_r09.zip
-    SYSIMG V google_apis x86_64 35 ps16k https://dl.google.com/android/repository/sys-img/google_apis/x86_64-ps16k-35_r05.zip
-    SYSIMG B google_apis x86_64 36 https://dl.google.com/android/repository/sys-img/google_apis/x86_64-36_r07.zip
-    SYSIMG B google_apis x86_64 36 ps16k https://dl.google.com/android/repository/sys-img/google_apis/x86_64-ps16k-36_r07.zip
-    SYSIMG B google_apis_playstore x86_64 36 https://dl.google.com/android/repository/sys-img/google_apis_playstore/x86_64-36_r07.zip
-    SYSIMG B google_apis_playstore x86_64 36 ps16k https://dl.google.com/android/repository/sys-img/google_apis_playstore/x86_64-playstore-ps16k-36_r07.zip
-    SYSIMG C google_apis x86_64 37.0 ps16k https://dl.google.com/android/repository/sys-img/google_apis/x86_64-ps16k-37.0_r04.zip
-    EMU stable 36.5.11 linux https://dl.google.com/android/repository/emulator-linux_x64-15261927.zip
-    EMU dev 36.6.8 linux https://dl.google.com/android/repository/emulator-linux_x64-15368433.zip
-
-A `ps16k` suffix marks a 16 KB page-size variant of the same `(api, sort, abi)`;
-the regular 4 KB variant continues to appear without the suffix. Pre-release
-codename builds (Baklava, CinnamonBun, ...) and ext-SDK images are filtered out
-to keep the list uncluttered; pass them as a direct zip path to
-`emu-docker create` if you need to build a container from one.
-
-One can then use tools like `wget` or a browser to download a desired emulator
-and system image. After the two are obtained, we can build a Docker image.
-
-Given an emulator zip file and a system image zip file, we can build a directory
-that can be sent to `docker build` via the following invocation of `emu-docker`:
-
-    emu-docker create <emulator-zip> <system-image-zip>  [--dest docker-src-dir
-    (getcwd()/bld/emulator by default)]
-
-This places all the right elements to run a docker image, but does not build,
-run or publish yet. A Linux emulator zip file must be used.
-
-## Building the Docker image: Setting up the source dir
-
-To build the Docker image corresponding to these emulators and system images:
-
-    docker build <docker-src-dir, either ./bld/emulator or specified argument to
-    emu_docker.py>
-
-A Docker image ID will output; save this image ID.
-
-## Running the Docker image
-
-We currently assume that KVM will be used with docker in order to provide CPU
-virtualization capabilities to the resulting Docker image.
-
-We provide the following run script:
-
-    ./run.sh <docker-image-id> <additional-emulator-params>
-
-It does the following:
-
-    docker run -e ADBKEY="$(cat ~/.android/adbkey)" \
-    --device /dev/kvm \
-    --publish 8554:8554/tcp \
-    --publish 5555:5555/tcp <docker-image-id>
-
-- Sets up the ADB key, assuming one exists at ~/.android/adbkey
-- Uses `--device /dev/kvm` to have CPU acceleration
-- Starts the emulator in the docker image with its gRPC service, forwarding the
-  host ports 8554/5555 to container ports 8554/5555 respectively.
-- The gRPC service is used to communicate with the running emulator inside the
-  container.
-
-*Note: You can use a public adbkey by injecting the ADBKEY_PUB variable, i.e.: -e ADBKEY_PUB="$(cat ~/.android/adbkey.pub)"*
-
-You also have the option to mount a /data partition which the emulator will use
-if available. This enables you to use a tmpfs which can give increased
-performance, especially in the nested virtualization scenario.
-
-For example:
-
-    docker run -e ADBKEY="$(cat ~/.android/adbkey)" \
-    --device /dev/kvm \
-    --mount type=tmpfs,destination=/data \
-    --publish 8554:8554/tcp \
-    --publish 5555:5555/tcp <docker-image-id>
-
-### Running the Docker image with GPU acceleration
-
-We currently only support hardware acceleration for NVIDIA. In order to make use
-of hardware acceleration you might have to install the NVIDIA docker extensions
-from [here](https://github.com/NVIDIA/nvidia-docker) if you are running
-an older version of docker (<19.03). You must make sure you have
-a minimal X installation if you are using a cloud instance. For example
-[Xvfb](https://en.wikipedia.org/wiki/Xvfb) can be used. You must build the
-containers by passing in the --gpu flag:
-
-    emu-docker create stable U --gpu
-
-You can now launch the emulator with the `run-with-gpu.sh` script:
-
-    ./run-with-gpu.sh <docker-image-id> <additional-emulator-params>
-
-The script is similar as to the one described above with the addition that it will:
-
-- Make all the available gpu's available (`--gpu all`)
-- Opens up xhost access for the container
-- Enable the domain socket under /tmp/.X11-unix to communicate with hosts X server
-
-Hardware acceleration will significantly improve performance of applications that heavily
-rely on graphics. Note that even though we need a X11 server for gpu acceleration there
-will be no ui displayed.
-
-## Pushing images to a repository
-
-You can push the created images to a repository by providing the --push and --repo and
---tag parameters when creating an image. The --tag parameter is optional and is used
-to indicate the version of the created image. This will default to the build-id of the
-emulator, as system images are rarely updated.
-
-We adopted the following naming scheme for images:
-
-{api}-{sort}-{abi}
-
-Where:
-
-- api is the api level
-- sort is one of: _aosp_, _google_, _playstore_
-  - _aosp_: A basic android open source image
-  - _google_: A system image that includes access to Google Play services.
-  - _playstore_: A system image that includes the Google Play Store app and access to Google Play services,
-    including a Google Play tab in the Extended controls dialog that provides a
-    convenient button for updating Google Play services on the device.
-- abi indicates the underlying CPU architecture, which is one of: _x86_, _x86_64_, _a32_, _a64_.
-  Note that arm images are not hardware accelerated and might not be fast enough.
-
-For example: _34-playstore-x64:36.5.11_ indicates a playstore enabled system
-image with U (API 34) running on 64-bit x86_64.
-
-An example invocation for publishing all U (API 34) images to google cloud repo could be:
-
-```sh
-    emu-docker -v create --push --repo us.gcr.io/emulator-project/ stable "U"
+```
+SYSIMG R google_apis x86_64 30 https://dl.google.com/android/repository/sys-img/google_apis/x86_64-30_r16.zip
+SYSIMG S google_apis x86_64 31 https://dl.google.com/android/repository/sys-img/google_apis/x86_64-31_r14.zip
+SYSIMG T google_apis_playstore x86_64 33 https://dl.google.com/android/repository/sys-img/google_apis_playstore/x86_64-33_r09.zip
+SYSIMG U google_apis x86_64 34 https://dl.google.com/android/repository/sys-img/google_apis/x86_64-34_r14.zip
+SYSIMG V google_apis x86_64 35 https://dl.google.com/android/repository/sys-img/google_apis/x86_64-35_r09.zip
+SYSIMG V google_apis x86_64 35 ps16k https://dl.google.com/android/repository/sys-img/google_apis/x86_64-ps16k-35_r05.zip
+EMU stable 36.5.11 linux https://dl.google.com/android/repository/emulator-linux_x64-15261927.zip
+EMU dev 36.6.8 linux https://dl.google.com/android/repository/emulator-linux_x64-15368433.zip
 ```
 
-Images that have been pushed to a repository can be launched directly from the repository.
-For example:
+> `ps16k` indicates a 16 KB page-size variant system image.
+
+### Building Docker Images Manually
+
+Create the container build directory from downloaded zip files:
 
 ```sh
-    docker run --device /dev/kvm --publish 8554:8554/tcp --publish 5555:5555/tcp \
-    us.gcr.io/emulator-project/34-playstore-x64:36.5.11
+emu-docker create <emulator-zip> <system-image-zip> [--dest docker-src-dir]
 ```
 
-## Communicating with the emulator in the container
-
-## adb
-
-We forward the port 5555 for adb access to the emulator running inside the
-container. Adb might not automatically detect the device, so run:
-
-    adb connect localhost:5555
-
-Your device should now show up as:
+Build the Docker image:
 
 ```sh
-$ adb devices
-
-List of devices attached:
-localhost:5555 device
+docker build <docker-src-dir>
 ```
 
-# Make the emulator accessible on the web
+### Running Docker Images
 
-This repository also contains an example that demonstrates how you can use
-docker to make the emulator accessible through the web. This is done by
-composing the following set of docker containers:
-
-- [Envoy](https://www.envoyproxy.io/), an edge and service proxy: The proxy is
-  responsible for the following:
-  - Offer TLS (https) using a self signed certificate
-  - Redirect traffic on port 80 (http) to port 443 (https)
-  - Act as a [gRPC proxy](https://grpc.io/blog/state-of-grpc-web/) for the
-    emulator.
-  - Verifying tokens to permit access to the emulator gRPC endpoint.
-  - Redirect other requests to the Nginx component which hosts
-    a [React](https://reactjs.org/) application.
-- [Nginx](https://www.nginx.com/), a webserver hosting a compiled React App
-- [Firebase](https://firebase.google.com/). We use firebase for
-  authentication and authorization. Firebase will hand out JWT tokens that
-  allow access to the emulator. If you use firebase you must configure
-  your project properly!
-- The emulator with a gRPC endpoint and a WebRTC video bridge.
-
-## Important Notice!
-
-In order to run this sample and be able to interact with the emulator you must
-keep the following in mind:
-
-- The demo has two methods to display the emulator.
-  1. Create an image every second, which is displayed in the browser. This
-     approach will always work, but gives poor performance.
-  2. Use [WebRTC](https://webrtc.org/) to display the state of the emulator in
-     real time. This will only work if you are able to create a peer to peer
-     connection to the server hosting the emulator. This is usually not
-     a problem when your server is publicly visible, or if you are running the
-     emulator on your own intranet.
-
-## Requirements
-
-- You will need [docker-compose](https://docs.docker.com/compose/install/).
-- You must have port 80 and 443 available. The docker containers will create an
-  internal network and expose the http and https ports.
-- You will need to create an emulator docker image, as described in the
-  documentation above.
-- Depending on your network you might need [turn](js/turn/README.MD)
-- We are currently using firebase to handle authentication and authorization.
-  you will need to provide a JSON configuation of the project you wish to use.
-  You can use the sample provided here, but it will only work on localhost.
-  You can get the firebase configuration from the [console](https://console.firebase.google.com/project/)
-  Place the firebase josn configuration here:
-
-  ./js/firebase_config.json
-
-  This will be used to generate the configuration and envoy settings.
-
-## Running the emulator on the web
-
-In order to create the web containers you must have the following tools available:
-
-- NodeJS
-- Npm
-
-Next you must create a container with the emulator & system image version you wish to
-use. For example:
-
-    . ./configure.sh && emu-docker create canary "P.*x86_64"
-
-### Running the create script
-
-Once you have taken care of the steps above you can create the containers using
-the `create_web_container.sh` script:
+Run using the provided helper script:
 
 ```sh
-$ ./create_web_container.sh -h
-   usage: create_web_container.sh [-h] [-a] [-s] [-i] -p user1,pass1,user2,pass2,...
-
-   optional arguments:
-   -h        show this help message and exit.
-   -a        expose adb. Requires ~/.android/adbkey.pub to be available at run.
-   -s        start the container after creation.
-   -i        install systemd service, with definition in /opt/emulator
+./run.sh <docker-image-id> <additional-emulator-params>
 ```
 
-For example:
+Or execute `docker run` directly:
 
 ```sh
-./create_web_container.sh
+docker run -e ADBKEY="$(cat ~/.android/adbkey)" \
+  --device /dev/kvm \
+  --publish 8554:8554/tcp \
+  --publish 5555:5555/tcp \
+  <docker-image-id>
 ```
 
-This will do the following:
+> To improve disk performance, mount a `/data` partition in `tmpfs`:
+>
+> ```sh
+> docker run -e ADBKEY="$(cat ~/.android/adbkey)" \
+>   --device /dev/kvm \
+>   --mount type=tmpfs,destination=/data \
+>   --publish 8554:8554/tcp \
+>   --publish 5555:5555/tcp <docker-image-id>
+> ```
 
-- Create a virtual environment
-- Create the set of containers to interact with the emulator.
-- Note that the systemd service has only been tested on debian/ubuntu.
+### Running with GPU Acceleration (NVIDIA)
 
-You can now launch the container as follows:
+For NVIDIA GPU acceleration, install the
+[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
+Ensure an X server (such as [Xvfb](https://en.wikipedia.org/wiki/Xvfb)) is
+running if headless.
+
+Build with `--gpu`:
 
 ```sh
-docker-compose -f js/docker/docker-compose.yaml up
+emu-docker create stable U --gpu
 ```
 
-If you wish to make ADB available you can apply the overlay found in
-js/docker/development.yaml as follows:
+Launch with `run-with-gpu.sh`:
 
 ```sh
-docker-compose -f js/docker/docker-compose.yaml -f js/docker/development.yaml up
+./run-with-gpu.sh <docker-image-id> <additional-emulator-params>
 ```
 
-Point your browser to [localhost](http://localhost). You will likely get
-a warning due to the usage of the self signed certificate. Once you accept the
-cert you should be able to login and start using the emulator.
+---
 
-Keep the following things in mind when you make the emulator accessible over adb:
+## Pushing Images to a Container Registry
 
-- Port 5555 will be exposed in the container.
-- The container must have access to the file: `~/.android/adbkey`. This is
-  the _PRIVATE_ key used by adb. Without this you will not be able to access the device
-  over adb.
-- The adb client you use to connect to the container must have access to the
-  private key (~/.android/adbkey). This is usually the case if you are on the same machine.
-- You must run: `adb connect ip-address-of-container:5555` before you can
-  interact with the device. For example:
+To build and push images directly to a registry:
 
 ```sh
-$ adb connect localhost:5555
-$ adb shell getprop
+emu-docker -v create --push --repo us.gcr.io/emulator-project/ stable "U"
 ```
-# Creating cloud instances
 
-There is a sample cloud-init script that provides details on how you can configure an instance
-that will automatically launch and configure an emulator on creation. Details on how to do this
-can be found [here](cloud-init/README.MD).
+Images follow the naming convention `{api}-{sort}-{abi}` (e.g.
+`34-playstore-x64:36.5.11`).
 
-### Troubleshooting
+Run pushed images:
 
-We have a separate [document](TROUBLESHOOTING.md) related to dealing with
-issues.
+```sh
+docker run --device /dev/kvm --publish 8554:8554/tcp --publish 5555:5555/tcp \
+  us.gcr.io/emulator-project/34-playstore-x64:36.5.11
+```
 
-### Modifying the demo
+---
 
-Details on the design and how to modify the React application can be found
-[here](js/README.md)
+## Web Streaming (WebRTC) Setup
+
+This repository provides an end-to-end WebRTC streaming architecture to view and
+control the emulator in a web browser without requiring external proxies (like Envoy)
+or separate video bridge binaries.
+
+### WebRTC Architecture
+
+```
+ +-----------------+                +-----------------+                +-----------------+
+ |   React Web     |    HTTP REST   |  Python Gateway |   gRPC (TCP)   |                 |
+ |  Frontend App   |--------------->|     Server      |--------------->| Android Emulator|
+ | (localhost:5173)|  WS Signaling  | (localhost:8080)|  gRPC Rtc      |                 |
+ |                 |===============>|                 |===============>|                 |
+ |                 |                +-----------------+                +-----------------+
+ |                 |                                                            |
+ |                 |                     WebRTC Data & Media Streams            |
+ |                 |<===========================================================|
+ +-----------------+                         (UDP / SRTP)
+```
+
+The stack consists of two main components:
+
+1. **Python Gateway Server (`gateway/`)**: Connects directly to the emulator's native gRPC interface (`android.emulation.control.v2.Rtc`) and translates HTTP REST and WebSocket JSEP signaling into gRPC calls.
+2. **React WebRTC App (`js/`)**: React + Vite application (from
+   [`android-emulator-webrtc`](https://github.com/pokowaka/android-emulator-webrtc))
+   rendering the live stream and hardware controls.
+
+### Quick Start: Web Streaming Demo
+
+#### Option A: One-Script Launch (Recommended)
+
+1. Locate your active emulator discovery `.ini` file:
+   - **Linux**: `~/.android/avd/running/pid_<PID>.ini`
+   - **macOS**: `~/Library/Android/avd/running/pid_<PID>.ini`
+
+2. Launch the Python Signaling Gateway:
+
+   ```sh
+   cd gateway
+   ./launch_video_demo.sh --discovery_file /path/to/pid_<PID>.ini
+   ```
+
+3. Launch the React web app in a second terminal:
+
+   ```sh
+   cd js/example
+   npm install
+   npm run dev
+   ```
+
+4. Open `http://localhost:5173` in your browser and connect to `localhost:8080`.
+
+#### Option B: Manual Setup
+
+For instructions on manual gateway deployment and service details, see
+[`gateway/DEMO.md`](gateway/DEMO.md).
+
+---
+
+## Cloud Deployments & Documentation
+
+- **Automated VM Provisioning**: See
+  [cloud-init/README.MD](cloud-init/README.MD) for `cloud-init` scripts to
+  launch emulator containers automatically on VM startup.
+- **Troubleshooting**: Refer to [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for
+  solutions to common issues.
+- **Web Frontend Customization**: Refer to [js/README.md](js/README.md) for
+  details on modifying or extending the React WebRTC components.

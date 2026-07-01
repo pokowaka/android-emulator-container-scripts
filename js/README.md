@@ -1,156 +1,141 @@
-JavaScript WebRTC samples
-=========================
+# android-emulator-webrtc
 
-This document descibes how to run the gRPC/WebRTC example. Support for WebRTC is officially only available on linux releases.
-This sample expects the emulator to be running in a server like environment:
+This package contains React components and utilities to display and interact with an Android Emulator from the browser. It is designed to interface with an Emulator Gateway using REST and WebSockets (removing gRPC-web and Envoy proxy requirements).
 
-- There is a Webserver hosting the HTML/JS
-- There is a [gRPC web proxy](https://grpc.io/blog/state-of-grpc-web/)
-- The udp ports required for WebRTC are open, or a turn service is configured.
+See the [Server Protocol Specification](docs/protocol.md) for details on how to implement the gateway.
 
-These services should be accessible for the browsers that want to interact with the emulator. For example a publicly visible GCE/AWS server should work fine.
+See the [android container](https://github.com/google/android-emulator-container-scripts) scripts for an example on how to run an emulator that is accessible via the web.
 
-This sample is based on ReactJS and provides the following set of components:
-
-- Emulator: This component displays the emulator and will send mouse & keyboard events to it.
-- LogcatView: A view that displays the current output of logcat. This currently relies on the material-ui theme.
-
-Both components require the following properties to be set:
-
-- `emulator`: This property must contain an `EmulatorControllerService` object.
-
-You will likely need to modify `App.js` and `index.html` to suit your needs.
-
-- There is a Webserver hosting the HTML/JS, we are using [NodeJs](https://nodejs.org/en/) for development.
-- We are using [ReactJS](https://reactjs.org/) as our component framework.
-- We use [Envoy](https://www.envoyproxy.io/) as the [gRPC web proxy](https://grpc.io/blog/state-of-grpc-web/).
-- You are running [containerized](../README.MD) version of the emulator.
-
-For fast video over [WebRTC](www.webrtc.org):
-
-- You are using linux.
-- You have android sdk installed, and the environment variable `ANDROID_SDK_ROOT` is set properly. The easiest way to install the sdk is by installing [Android Studio](https://developer.android.com/studio/install).
-- An emulator build newer than 5769853. You can either:
-  - Check if your current installed version will work. Run:
-   ```sh
-    $ $ANDROID_SDK_ROOT/emulator/emulator -version | head -n 1
-    ```
-    and make sure that the reported build_id is higher than 5769853
-  - Build one from source yourself.
-  - Obtain one via `emu-docker list` (which prints download URLs for the publicly published emulator builds) or `emu-docker create <build-id>` to fetch a specific build. Then unzip the contents to `$ANDROID_SDK_ROOT`. For example:
-  ```sh
-    $ unzip ~/Downloads/sdk-repo-linux-emulator-5775474.zip -d $ANDROID_SDK_ROOT
-  ```
-- A valid virtual device to run inside the emulator. Instructions on how to create a virtual device can be found [here](https://developer.android.com/studio/run/managing-avds). Any virtual device can be used.
-- [Node.js](https://nodejs.org/en/) Stable version 10.16.1 LTS or later.
-- A [protobuf](https://developers.google.com/protocol-buffers/) compiler, version 3.6 or higher is supported.
-- [Docker](https://www.docker.com). We will use the container infrastructure for easy deployment. Follow the [install instructions](https://docs.docker.com/get-docker/).
-
-
-# Configure the emulator
-
-Make sure you are able to launch the emulator from the command line with a valid avd. Instructions on how to create a virtual device can be found [here](https://developer.android.com/studio/run/managing-avds).
-
-For example if you created a avd with the name P, you should be able to launch it as follows:
-
-```sh
-  $ $ANDROID_SDK_ROOT/emulator/emulator @P
+```bash
+npm install --save android-emulator-webrtc
 ```
 
-Make sure that the emulator is working properly, and that can use the desired avd.
+## Features
 
-WebRTC support will be activated if the emulator is launched with the `-grpc <port>` flag. The current demos expect the gRPC endpoint to be available at `localhost:8554`. This port only needs to be accessible by the gRPC proxy that is being used. There is no need for this port to be publicly visible.
+- Display and interact with a remote Android Emulator over the web.
+- Real-time WebRTC video and audio streaming.
+- Fully interactive mouse, touch, and keyboard event forwarding.
+- Reconnection support with exponential backoff for WebSocket and WebRTC failures.
+- Native TypeScript support with built-in type definitions.
 
-```sh
-  $ $ANDROID_SDK_ROOT/emulator/emulator @P -grpc 8554
+---
+
+## Usage
+
+### Simple Connection
+
+You can connect to a remote unsecured emulator as follows using a modern React functional component:
+
+```tsx
+import React from "react";
+import { Emulator } from "android-emulator-webrtc";
+
+function EmulatorScreen() {
+  return (
+    <div style={{ width: "360px", height: "640px", background: "#000" }}>
+      <Emulator 
+        uri="localhost:8080" 
+        onStateChange={(state) => console.log("State:", state)}
+        onError={(err) => console.error("Error:", err)}
+      />
+    </div>
+  );
+}
 ```
 
-### Do I need TURN?
+### Secure Connection
 
-The most important thing to is to figure out if you need a [Turn Server](https://en.wikipedia.org/wiki/Traversal_Using_Relays_around_NAT).
-**You usually only need this if your server running the emulator is behind a firewall, and not publicly accessible.**
-Most of the time there is no need for a turn server. If you do have needs for a turn server you can follow the steps in the
-[README](turn/README.MD).
+To connect to a secure endpoint, provide an `auth` service object that implements the required authentication hooks:
 
-# Authentication
+```tsx
+import React from "react";
+import { Emulator } from "android-emulator-webrtc";
 
-The web demo supports two authentication backends:
+const myAuthService = {
+  // Returns headers to be sent with REST requests (e.g. GPS updates)
+  authHeader: () => {
+    return { Authorization: "Bearer my-session-token" };
+  },
+  // Callback invoked when a 401 Unauthorized is encountered
+  unauthorized: () => {
+    console.log("Token expired or unauthorized. Redirecting to login...");
+  }
+};
 
-## Self-hosted JWT (recommended for deployments)
-
-The `docker/` stack ships a token service (`jwt-provider/`) that mints JWTs signed by a keypair you control. This is the production path — no third-party identity provider, no shared sign-in quota, no external dependency. See `docker/` and `jwt-provider/` for the setup.
-
-## Firebase / Google sign-in (quick-start demo only)
-
-A lightweight on-ramp for "click sign-in, see the emulator." You bring your own Firebase project — this repo does not ship a usable one. Setup:
-
-1. **Create a Firebase project** at https://console.firebase.google.com. Any name works (e.g. `my-aemu-demo`).
-2. **Enable Google sign-in**: Authentication → Sign-in method → Google → Enable, set a project support email, Save.
-3. **Add a web app**: Project settings (gear icon) → Your apps → Web → register the app, copy the `firebaseConfig` object.
-4. **Save the config locally**:
-   ```sh
-   cp firebase_config.example.json firebase_config.json
-   ```
-   Open `firebase_config.json` and replace each placeholder value with the matching field from your project's web app config.
-5. **Generate the derived files**:
-   ```sh
-   python3 config_gen.py firebase_config.json
-   ```
-   This writes `src/config.js` and renders `develop/envoy.yaml` + `docker/envoy.yaml` from their `.template.yaml` siblings, substituting your project ID into the envoy JWT issuer/audience.
-6. **Start the dev stack** as described under *As a Developer* below.
-
-`firebase_config.json`, `src/config.js`, and the rendered `envoy.yaml` files are gitignored — each contributor configures their own project. The `.template.yaml` files are the source of truth; rerun `config_gen.py` after changing them.
-
-Firebase web API keys are not secrets — they're public identifiers, see [Firebase docs](https://firebase.google.com/docs/projects/api-keys). But your project *owns* every sign-in (PII, quota, abuse). Don't paste someone else's config, and don't commit yours.
-
-# Internal Organization
-
-This sample is based on ReactJS and uses the android-emulator-webrtc module to display the emulator.
-
-- EmulatorScreen: This component displays the emulator and will send mouse & keyboard events to it.
-- LogcatView: A view that displays the current output of logcat. This currently relies on the material-ui theme.
-
-Both components require the following properties to be set:
-
-- `uri`: This property must contain a URI to the gRPC proxy.
-- `auth`: This property must contain an AuthService that implements the following two methods:
-      - `authHeader()` which must return a set of headers that should be send along with a request. For example:
-      ```js
-          return { Authorization: "token header" };
-      ```
-      - `unauthorized()` a function that gets called when a 401 was received, here you can implement logic
-         to make sure the next set of headers contain what is needed.
-
-Components that you will need to include:
-- **TokenAuthService**: An authentication service that provides a JWT token to the emulator.
-
-You will likely need to modify `App.js` and `index.html` to suit your needs.
-
-## As a Developer
-
-As a developer you will make use of an envoy docker container and use node.js to serve the react app.  First you must
-make sure you create a containerized version of the emulator as follows:
-
-```sh
-emu-docker create stable "Q google_apis_playstore x86"
+function SecureEmulatorScreen() {
+  return (
+    <Emulator 
+      uri="https://my-secure-gateway.com" 
+      auth={myAuthService} 
+    />
+  );
+}
 ```
 
-This will binplace all the files needed for development under the src directory.
-Next you can get the development environment ready by:
+---
 
+## Reference
 
-```sh
-  $ make deps
+### `<Emulator />`
+
+A React component that displays the remote Android Emulator screen and forwards user input.
+
+#### Props
+
+| Prop | Type | Default | Required | Description |
+| :--- | :---: | :---: | :---: | :--- |
+| **uri** | `string` | | :white_check_mark: | Endpoint where the emulator gateway is reachable (e.g. `host:port` or `http(s)://host:port`). |
+| **auth** | `object` | `null` | :x: | An authentication service object implementing `authHeader()` and `unauthorized()`. |
+| **muted** | `boolean` | `true` | :x: | Whether the audio stream should be muted. |
+| **volume** | `number` | `1.0` | :x: | Audio playback volume between `0.0` (muted) and `1.0` (100%). |
+| **width** | `number` | | :x: | Width of the component in pixels. Defaults to `100%`. |
+| **height** | `number` | | :x: | Height of the component in pixels. Defaults to `100%`. |
+| **gps** | `object` | | :x: | An object containing `{ latitude, longitude, altitude, heading, speed }` to update the emulator's mock location. |
+| **onStateChange** | `function` | | :x: | Callback invoked on WebRTC connection state changes: `"connecting"`, `"connected"`, or `"disconnected"`. |
+| **onAudioStateChange** | `function` | | :x: | Callback invoked when the audio track becomes available (`true`) or unavailable (`false`). |
+| **onError** | `function` | | :x: | Callback invoked when a WebSocket, WebRTC, or GPS update error occurs. |
+
+#### Imperative Methods
+
+By passing a `ref` to the `<Emulator />` component, you can access the following helper methods:
+
+* **`sendKey(key: string)`**: Simulates a physical hardware button press on the device.
+  
+  Common hardware key names:
+  * `"GoHome"` — Go to the home screen.
+  * `"GoBack"` — Go back to the previous screen.
+  * `"AppSwitch"` — Open the recent apps switcher.
+  * `"Power"` — Press the power button.
+  * `"AudioVolumeUp"` — Increase the device volume.
+  * `"AudioVolumeDown"` — Decrease the device volume.
+
+---
+
+### `EmulatorStatus`
+
+A utility class used to query and cache the hardware configuration and status of the remote emulator.
+
+```typescript
+import { EmulatorStatus } from "android-emulator-webrtc";
+
+const statusService = new EmulatorStatus("http://localhost:8080/api/v1/emulator/status", myAuthService);
+
+// Fetch the status
+statusService.updateStatus((status) => {
+  console.log("Device Screen Width:", status.hardwareConfig?.["hw.lcd.width"]);
+  console.log("Device Screen Height:", status.hardwareConfig?.["hw.lcd.height"]);
+}, true); // Set to true to use cached status if available
 ```
 
-And start envoy + nodejs as follows:
+---
 
+### `logger`
+
+The logger instance used internally by the library. You can use it to configure the library's log level:
+
+```typescript
+import { logger } from "android-emulator-webrtc";
+
+// Enable verbose WebRTC and signaling debug logs in the console
+logger.setLevel("debug");
 ```
-  $ make develop
-```
-
-This should open up a browser, and detect any change made to the webpages and JavaScript sources. Hit ctrl-c to stop the dev environment. Note that shutdown takes a bit as a docker container needs to shut down.
-
-## Limitations
-
-gRPC is not well supported in the browser and has only support for unary calls and server side streaming (when using envoy). This restricts support for other services such as [Waterfall](https://github.com/google/devx-tools/tree/master/waterfall).

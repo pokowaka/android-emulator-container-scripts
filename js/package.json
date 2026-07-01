@@ -1,34 +1,63 @@
 {
-  "name": "js",
-  "version": "0.1.0",
-  "private": true,
-  "dependencies": {
-    "@emotion/react": "^11.11.0",
-    "@emotion/styled": "^11.11.0",
-    "@mui/icons-material": "^5.11.16",
-    "@mui/lab": "^5.0.0-alpha.130",
-    "@mui/material": "^5.13.1",
-    "@mui/styles": "^5.13.1",
-    "android-emulator-webrtc": "^1.0.18",
-    "axios": "^1.4.0",
-    "firebase": "^11.10.0",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2",
-    "react-scripts": "^5.0.1"
-  },
+  "name": "android-emulator-webrtc",
+  "version": "2.0.0",
+  "description": "Android Emulator WebRTC module",
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "build": "babel src -d dist && tsc",
+    "test": "jest"
   },
-  "eslintConfig": {
-
+  "jest": {
+    "verbose": true
   },
-  "browserslist": [
-    ">0.2%",
-    "not dead",
-    "not ie <= 11",
-    "not op_mini all"
-  ]
+  "dependencies": {
+    "google-protobuf": "^3.21.2",
+    "loglevel": "^1.9.2",
+    "prop-types": "^15.8.1"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.21.5",
+    "@babel/core": "^7.21.8",
+    "@babel/plugin-proposal-class-properties": "^7.18.6",
+    "@babel/plugin-transform-runtime": "^7.21.4",
+    "@babel/preset-env": "^7.21.5",
+    "@babel/preset-react": "^7.18.6",
+    "@babel/preset-typescript": "^7.29.7",
+    "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/react": "^14.0.0",
+    "@types/jest": "^30.0.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "babel-core": "7.0.0-bridge.0",
+    "babel-jest": "^29.5.0",
+    "babel-loader": "^9.1.2",
+    "babel-polyfill": "^6.26.0",
+    "jest": "^29.5.0",
+    "jest-environment-jsdom": "^29.5.0",
+    "protoc-gen-js": "^3.21.4-4",
+    "react": "^18.2.0",
+    "react-docgen-markdown-renderer": "^2.1.3",
+    "react-dom": "^18.2.0",
+    "resize-observer-polyfill": "^1.5.1",
+    "typescript": "^6.0.3",
+    "yalc": "^1.0.0-pre.53"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/google/android-emulator-webrtc.git"
+  },
+  "keywords": [
+    "webrtc",
+    "android",
+    "emulator"
+  ],
+  "author": "Erwin Jansen <pokowaka@gmail.com> (https://github.com/pokowaka/)",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/google/android-emulator-container-scripts/issues"
+  },
+  "homepage": "https://github.com/google/android-emulator-container-scripts#js/android-emulator-webrtc/README.MD"
 }

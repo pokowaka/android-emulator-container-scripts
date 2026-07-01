@@ -58,16 +58,12 @@ docker pull us-docker.pkg.dev/android-emulator-268719/images/30-google-x64:30.1.
 
 - **`ADBKEY`**: Private ADB key content needed for ADB authentication.
 
-### Available Container Ports
+### The following ports are available:
 
-- **`5555`**:
-  [Android Debug Bridge (ADB)](https://developer.android.com/studio/command-line/adb)
-  port.
-- **`8554`**: gRPC endpoint for control and WebRTC signaling.
+ - **5555**: The [Android Debug Bridge (ADB)](https://developer.android.com/studio/command-line/adb) port.
+ - **8554**: The emulator gRPC service port, which hosts the `android.emulation.control.v2.Rtc` WebRTC signaling/media streaming service directly.
 
-### Example Invocation
-
-Launch a container forwarding gRPC and ADB ports:
+An example invocation making ADB and the gRPC/WebRTC endpoint available:
 
 ```sh
 docker run -e "ADBKEY=$(cat ~/.android/adbkey)" \
