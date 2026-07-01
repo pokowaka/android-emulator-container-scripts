@@ -1,87 +1,116 @@
-## Android Emulator
-The Android Emulator simulates Android devices on your computer so that you can test your application on a variety of devices and Android API levels without needing to have each physical device.
+# Android Emulator Container Registry
 
-The emulator provides almost all of the capabilities of a real Android device. You can simulate incoming phone calls and text messages, specify the location of the device, simulate different network speeds, simulate rotation and other hardware sensors, access the Google Play Store, and much more.
+The Android Emulator simulates Android devices on your computer so that you can
+test applications across a variety of API levels without physical hardware.
 
-Testing your app on the emulator is in some ways faster and easier than doing so on a physical device.
+The emulator provides full device capabilities including incoming calls, SMS
+simulation, location mocking, custom network speeds, rotation/sensors, Google
+Play Services, and Google Play Store access.
 
-### Requirements and recommendations
-The docker images have the following requirements:
+---
 
-- Linux only. Launching the emulator in Windows or MacOS is not supported.
-- KVM must be available. You can get access to KVM by running on "bare metal",
-  or on a (virtual) machine that provides [nested
-  virtualization](https://blog.turbonomic.com/blog/). If you are planning to run
-  this in the cloud (gce/azure/aws/etc..) you first must make sure you have
-  access to KVM. Details on how to get access to KVM on the various cloud
-  providers can be found here:
+## Requirements and Recommendations
 
-    - AWS provides [bare
-      metal](https://aws.amazon.com/about-aws/whats-new/2019/02/introducing-five-new-amazon-ec2-bare-metal-instances/)
-      instances that provide access to KVM.
-    - Azure: pick a [VM size that supports nested virtualization](https://learn.microsoft.com/en-us/azure/virtual-machines/acu)
-      (the `acu` table flags supported families). KVM is then available inside the VM.
-    - GCE: Follow these
-      [instructions](https://cloud.google.com/compute/docs/instances/enable-nested-virtualization-vm-instances)
-      to enable nested virtualization.
+Container images require a Linux host environment:
 
-Keep in mind that you will see reduced performance if you are making use of nested virtualization.
+- **Linux Only**: Docker containers require KVM acceleration on a Linux host
+  (macOS and Windows via Docker Desktop are not supported).
+- **KVM Acceleration**: KVM must be enabled on your host. You can access KVM on
+  bare-metal machines or cloud virtual machines with nested virtualization
+  enabled:
+  - **AWS**: Use
+    [EC2 Bare Metal instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html#bare-metal-instances)
+    or instance types supporting KVM.
+  - **Azure**: Select a
+    [VM size supporting nested virtualization](https://learn.microsoft.com/en-us/azure/virtual-machines/sizes)
+    (e.g., Dv3 or Ev3 series).
+  - **Google Cloud (GCE)**: Enable
+    [nested virtualization](https://cloud.google.com/compute/docs/instances/nested-virtualization/overview)
+    on Compute Engine VMs.
 
-### Available images.
+> [!WARNING] You will experience reduced performance when using nested
+> virtualization compared to bare-metal hardware.
 
-Here is a list of the latest images.
+---
 
-* us-docker.pkg.dev/android-emulator-268719/images/28-playstore-x64:30.1.2
-* us-docker.pkg.dev/android-emulator-268719/images/28-playstore-x64-no-metrics:30.1.2
-* us-docker.pkg.dev/android-emulator-268719/images/29-google-x64:30.1.2
-* us-docker.pkg.dev/android-emulator-268719/images/29-google-x64-no-metrics:30.1.2
-* us-docker.pkg.dev/android-emulator-268719/images/30-google-x64:30.1.2
-* us-docker.pkg.dev/android-emulator-268719/images/30-google-x64-no-metrics:30.1.2
+## Hosted Container Images
 
-For example you can now pull a container as follows:
+Google Artifact Registry hosts pre-built, production-ready container images:
 
-    docker pull us-docker.pkg.dev/android-emulator-268719/images/28-playstore-x64:30.1.2
+- `us-docker.pkg.dev/android-emulator-268719/images/28-playstore-x64:30.1.2`
+- `us-docker.pkg.dev/android-emulator-268719/images/28-playstore-x64-no-metrics:30.1.2`
+- `us-docker.pkg.dev/android-emulator-268719/images/29-google-x64:30.1.2`
+- `us-docker.pkg.dev/android-emulator-268719/images/29-google-x64-no-metrics:30.1.2`
+- `us-docker.pkg.dev/android-emulator-268719/images/30-google-x64:30.1.2`
+- `us-docker.pkg.dev/android-emulator-268719/images/30-google-x64-no-metrics:30.1.2`
 
-### Usage
+Pull an image directly:
 
-The following environment variables are accepted by the emulator:
-
- - `ADBKEY` This is the private adb key, needed if you wish to make use of adb. ADB is available on port 5555.
-
-The following ports are available:
-
- - 5555: The [Android Debug Bridge (adb)](https://developer.android.com/studio/command-line/adb) port
- - 8554: The gRPC port. This can be used by android studio and javascript endpoints.
-
-An example invocation making the console, adb and the gRPC endpoint available:
 ```sh
-docker run -e "ADBKEY=$(cat ~/.android/adbkey)" --device /dev/kvm --publish 8554:8554/tcp --publish 5554:5554/tcp --publish 5555:5555/tcp us-docker.pkg.dev/android-emulator-268719/images/28-playstore-x64:30.1.2
+docker pull us-docker.pkg.dev/android-emulator-268719/images/30-google-x64:30.1.2
 ```
 
-You might need to run `adb connect localhost:5555` to enable ADB to discover the device.
+---
 
+## Usage & Configuration
 
-### License
+### Environment Variables
 
-By making use of this container you accept the [Android Sdk License](https://developer.android.com/studio/terms)
+- **`ADBKEY`**: Private ADB key content needed for ADB authentication.
 
-The android emulator is released under the [Apache-2 license](http://www.apache.org/licenses/LICENSE-2.0).
+### Available Container Ports
 
-The notices for the emulator and system image can be found in the following directories:
+- **`5555`**:
+  [Android Debug Bridge (ADB)](https://developer.android.com/studio/command-line/adb)
+  port.
+- **`8554`**: gRPC endpoint for control and WebRTC signaling.
 
--  /android/sdk/system-images/android/x86_64/NOTICE.txt
--  /android/sdk/system-images/android/x86/NOTICE.txt
--  /android/sdk/emulator/NOTICE.txt
+### Example Invocation
 
-You can extract the notices as follows:
+Launch a container forwarding gRPC and ADB ports:
 
-    CONTAINER_ID=$(docker create name_of_image)
-    docker export $CONTAINER_ID | tar vxf -  --wildcards --no-anchored 'NOTICE.txt'
+```sh
+docker run -e "ADBKEY=$(cat ~/.android/adbkey)" \
+  --device /dev/kvm \
+  --publish 8554:8554/tcp \
+  --publish 5555:5555/tcp \
+  us-docker.pkg.dev/android-emulator-268719/images/30-google-x64:30.1.2
+```
 
+Connect ADB from host:
 
-For containers that do not have the -no-metrics you accept the following:
+```sh
+adb connect localhost:5555
+```
 
-By using this docker container you authorize Google to collect usage data for the Android Emulator
-— such as how you utilize its features and resources, and how you use it to test applications.
-This data helps improve the Android Emulator and is collected in accordance with
-[Google's Privacy Policy](http://www.google.com/policies/privacy/)
+---
+
+## Licensing & Privacy
+
+- By using these container images, you accept the
+  [Android SDK License Agreement](https://developer.android.com/studio/terms).
+- The Android Emulator binary is released under the
+  [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0).
+
+Notice files for the emulator and system images are located inside the container
+at:
+
+- `/android/sdk/system-images/android/x86_64/NOTICE.txt`
+- `/android/sdk/system-images/android/x86/NOTICE.txt`
+- `/android/sdk/emulator/NOTICE.txt`
+
+Extract notice files from an image:
+
+```sh
+CONTAINER_ID=$(docker create us-docker.pkg.dev/android-emulator-268719/images/30-google-x64:30.1.2)
+docker export $CONTAINER_ID | tar vxf - --wildcards --no-anchored 'NOTICE.txt'
+docker rm $CONTAINER_ID
+```
+
+### Metrics Collection
+
+For container images without the `-no-metrics` suffix:
+
+- By using these images, you authorize Google to collect usage data for the
+  Android Emulator to help improve the tool. Data is collected in accordance
+  with [Google's Privacy Policy](https://policies.google.com/privacy).
